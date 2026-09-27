@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% block title %}Track Case Status | SafeSpace{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-12">
+    <div class="bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl border border-purple-100/80 p-8 space-y-6">
+        <div class="text-center">
+            <h1 class="text-2xl font-black text-purple-950 tracking-tight">Case Status Tracking</h1>
+            <p class="text-xs text-gray-500 mt-1">Input your unique tracking sequence token credentials below.</p>
+        </div>
+        
+        <form method="POST" action="{% url 'track_case' %}" class="space-y-4 bg-gray-50/60 backdrop-blur-sm p-6 rounded-2xl border border-purple-100/40 shadow-inner">
+            {% csrf_token %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold uppercase tracking-wider text-purple-400 font-mono">Reference Code</label>
+                    <input type="text" 
+                           name="reference_number" 
+                           value="{{ reference_number }}" 
+                           placeholder="e.g., GBV-A1B2-C3D4" 
+                           required
+                           class="w-full p-3 uppercase font-mono text-xs font-bold text-center bg-white/90 border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-white transition shadow-sm">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold uppercase tracking-wider text-purple-400 font-mono">Secret Access PIN</label>
+                    <input type="password" 
+                           name="case_access_pin" 
+                           placeholder="••••••" 
+                           maxlength="6"
+                           required
+                           class="w-full p-3 font-mono text-xs font-bold text-center bg-white/90 border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-white transition shadow-sm">
+                </div>
+            </div>
+            
+            <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-purple-600/20 transition-all duration-200 text-xs uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-purple-500 active:scale-[0.99]">
+                Search Case Status
+            </button>
+        </form>
+
+        <!-- Forgot PIN Link -->
+        <div class="mt-6 text-center">
+            <button type="button" onclick="document.getElementById('forgot-pin-section').classList.toggle('hidden')" class="text-purple-600 hover:text-purple-800 text-[11px] font-black uppercase tracking-wider underline transition-colors">
+                Forgot your Secret Access PIN?
+            </button>
+        </div>
+
+        <div id="forgot-pin-section" class="{% if not recovery_status and not request.POST.recover_pin %}hidden{% endif %} mt-4 p-6 bg-white border border-purple-100 rounded-3xl shadow-sm transition-all duration-300">
+            <div class="flex items-start justify-between">
+                <div>
+                    <h2 class="text-sm font-black text-purple-950 uppercase tracking-widest">PIN Recovery</h2>
+                    <p class="text-xs text-gray-500 mt-1">Enter your GBV reference code and the phone number registered with your report.</p>
+                </div>
+                <button type="button" onclick="document.getElementById('forgot-pin-section').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 p-1">✕</button>
+            </div>
+            <form method="POST" action="{% url 'track_case' %}" class="mt-5 space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="recover_pin" value="1">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold uppercase tracking-wider text-purple-400 font-mono">Reference Code</label>
+                        <input type="text" 
+                               name="reference_number" 
+                               value="{{ recovered_reference|default:reference_number }}" 
+                               placeholder="GBV-A1B2-C3D4" 
+                               required
+                               class="w-full p-3 uppercase font-mono text-xs font-bold text-center bg-white/90 border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-white transition shadow-sm">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[10px] font-bold uppercase tracking-wider text-purple-400 font-mono">Registered Phone</label>
+                        <input type="tel"
+                               name="recovery_phone"
+                               value="{{ recovery_phone }}"
+                               placeholder="e.g., 0712345678"
+                               required
+                               class="w-full p-3 font-mono text-xs font-bold text-center bg-white/90 border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-white transition shadow-sm">
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-violet-600/20 transition-all duration-200 text-xs uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-violet-500 active:scale-[0.99]">
+                    Send PIN to phone
+                </button>
+            </form>
+            {% if recovery_status %}
+                <div class="mt-4 p-4 rounded-xl text-xs font-semibold {% if recovery_status.success %}bg-green-50 border border-green-200 text-green-700{% else %}bg-red-50 border border-red-200 text-red-700{% endif %}">
+                    {{ recovery_status.message }}
+                </div>
+            {% endif %}
+        </div>
+
+        {% if request.method == "POST" %}
+            <hr class="border-purple-100">
+            {% if report %}
+                <div class="space-y-4 text-left">
+                    
+                    <div class="p-4 rounded-xl border border-purple-200 text-center space-y-2 {% if report.status == 'pending' %}bg-amber-50/60{% elif report.status == 'under_review' %}bg-blue-50/60{% else %}bg-green-50/60{% endif %}">
+                        <span class="text-xs font-mono font-bold text-purple-600 block">{{ report.reference_number }}</span>
+                        <h2 class="text-base font-black text-gray-800 tracking-tight">{{ report.get_incident_category_display }}</h2>
+                        
+                        <span class="inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide
+                            {% if report.status == 'pending' %} bg-amber-200 text-amber-800
+                            {% elif report.status == 'under_review' %} bg-blue-200 text-blue-800
+                            {% elif report.status == 'action_taken' %} bg-green-200 text-green-800
+                            {% else %} bg-gray-200 text-gray-800 {% endif %}">
+                            {{ report.get_status_display }}
+                        </span>
+                        <p class="text-[10px] text-gray-400 font-mono mt-1">Last System Update: {{ report.updated_at|date:"M d, Y H:i" }}</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 text-xs bg-white p-3 rounded-xl border border-gray-100 font-medium text-gray-600">
+                        <div><span class="text-gray-400 block text-[10px] uppercase font-mono">Incident Date</span>{{ report.incident_date|date:"F d, Y" }}</div>
+                        <div><span class="text-gray-400 block text-[10px] uppercase font-mono">Platform Used</span>{{ report.platform_used }}</div>
+                        <div><span class="text-gray-400 block text-[10px] uppercase font-mono">Assigned Department</span>{{ report.assigned_department|default:"Auto-routing in progress" }}</div>
+                        <div><span class="text-gray-400 block text-[10px] uppercase font-mono">Assigned Home</span>{{ report.assigned_home|default:"Not assigned" }}</div>
+                    </div>
+
+                    <div class="space-y-1 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-500">Official Action Logs</h3>
+                        {% if report.admin_notes %}
+                            <p class="text-sm text-gray-700 font-medium leading-relaxed mt-1">
+                                {{ report.admin_notes }}
+                            </p>
+                        {% else %}
+                            <p class="text-xs text-gray-400 italic mt-1">
+                                Case received securely by triage desk. Standing by for investigator assignments.
+                            </p>
+                        {% endif %}
+                    </div>
+
+                    <div class="space-y-2 bg-white p-4 rounded-xl border border-gray-100">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-500">Automatic System Updates</h3>
+                        {% for log in report.audit_logs.all|slice:":4" %}
+                            <div class="text-xs text-gray-600 border-t border-gray-100 first:border-t-0 pt-2 first:pt-0">
+                                <span class="block font-mono text-[10px] text-gray-400">{{ log.timestamp|date:"M d, Y H:i" }}</span>
+                                {{ log.action }}
+                            </div>
+                        {% empty %}
+                            <p class="text-xs text-gray-400 italic">No automated workflow updates have been recorded yet.</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="pt-2">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3">Case Milestone Timeline</h3>
+                        <div class="space-y-3 font-semibold text-xs">
+                            <div class="flex items-center space-x-3 text-green-600">
+                                <span class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center font-bold">✓</span>
+                                <span>Incident submitted securely to platform database.</span>
+                            </div>
+                            
+                            <div class="flex items-center space-x-3 {% if report.status != 'pending' %}text-green-600{% else %}text-gray-400{% endif %}">
+                                <span class="w-5 h-5 rounded-full flex items-center justify-center font-bold {% if report.status != 'pending' %}bg-green-100{% else %}bg-gray-100{% endif %}">
+                                    {% if report.status != 'pending' %}✓{% else %}2{% endif %}
+                                </span>
+                                <span>Automatically routed to safety response queue.</span>
+                            </div>
+
+                            <div class="flex items-center space-x-3 {% if report.status == 'action_taken' or report.status == 'closed' %}text-green-600{% else %}text-gray-400{% endif %}">
+                                <span class="w-5 h-5 rounded-full flex items-center justify-center font-bold {% if report.status == 'action_taken' or report.status == 'closed' %}bg-green-100{% else %}bg-gray-100{% endif %}">
+                                    {% if report.status == 'action_taken' or report.status == 'closed' %}✓{% else %}3{% endif %}
+                                </span>
+                                <span>Remediation action finalized / Case closed.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            {% else %}
+                <div class="p-4 bg-red-50 border border-red-200 rounded-xl text-center text-xs text-red-800 font-medium leading-normal">
+                    No matching report structure discovered for reference sequence token 
+                    "<span class="font-mono font-bold">{{ reference_number }}</span>" with the specified PIN profile. 
+                    Please double-check your cryptographic key credentials and try again.
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
